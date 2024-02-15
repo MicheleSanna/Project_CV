@@ -18,13 +18,14 @@ class OneVRestSVM():
             probs = None
             probs = self.classifiers[j].predict_proba(data)
             for i in range(len(probs)):
-                raw_preds[i][j] = probs[i][1]
+                raw_preds[i, j] = probs[i, 1]
         return np.argmax(raw_preds, axis= 1)
 
 class NearestNeighbourClassifier():
-    def __init__(self):
+    def __init__(self, distance):
         self.dataset_train = None
         self.labels_train = None
+        self.distance = distance
 
     def fit(self, data, labels):
         self.dataset_train = data
@@ -36,7 +37,7 @@ class NearestNeighbourClassifier():
         for i in range(len(data)):
             min_dist = 10000000
             for j in range(len(self.dataset_train)):
-                dist = np.linalg.norm(self.dataset_train[j] - data[i])
+                dist = self.distance(self.dataset_train[j], data[i])
                 if dist < min_dist:
                     min_dist = dist
                     labels[i] = self.labels_train[j]

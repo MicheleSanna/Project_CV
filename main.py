@@ -1,6 +1,8 @@
 from Evaluate import *
 from Dataset import *
-from Centroids import *
+from Histograms import *
+from EMD import * 
+from scipy.stats import wasserstein_distance
 
 def min_dist(centroids, descriptors):
     min_dist = 100000
@@ -37,31 +39,33 @@ dataset = Dataset("dataset\\", "train")
 
 sift_descriptors = create_descriptor_dataset(dataset)
 #best_cluster_number(sift_descriptors) #Not useful
-n_clusters = 22
+
+n_clusters = 30
+print("--------------------")
+print("N CLUSTERS: ", n_clusters)
 kmeans = KMeans(n_clusters = n_clusters, n_init='auto')
 kmeans.fit(sift_descriptors)
 centroids = kmeans.cluster_centers_
 
-
-print("Passo 2")
-
-bow_dataset_train, labels_train = create_bag_of_words_dataset(dataset, centroids)
+bow_dataset_train, labels_train = create_bag_of_words_dataset(dataset, centroids, l2_distance)
 print(bow_dataset_train)
 print("Bag of words train dataset: DONE")
 print("Length: ", len(bow_dataset_train))
 
 dataset_test = Dataset("dataset\\", "test")
 
-bow_dataset_test, labels_test = create_bag_of_words_dataset(dataset_test, centroids)
+bow_dataset_test, labels_test = create_bag_of_words_dataset(dataset_test, centroids, l2_distance)
 
 print("Bag of words test dataset: DONE")
 
-onenn_classifier = NearestNeighbourClassifier()
+onenn_classifier = NearestNeighbourClassifier(l2_distance)
 onenn_classifier.fit(bow_dataset_train, labels_train)
 
+preds = onenn_classifier.predict(bow_dataset_test)
+print_confusion_matrix(build_confusion_matrix(preds, labels_test))
 print("ACCURACY with 1nn", get_accuracy(onenn_classifier.predict(bow_dataset_test), labels_test))
 
-svm_classifier = svm.SVC(decision_function_shape='ovr')
+svm_classifier = svm.SVC(decision_function_shape='ovr') #This is not the implementation of One vs Rest SVM, it's just for testing
 svm_classifier.fit(bow_dataset_train, labels_train)
 
 print("ACCURACY with SVM", get_accuracy(svm_classifier.predict(bow_dataset_test), labels_test))
@@ -69,6 +73,8 @@ print("ACCURACY with SVM", get_accuracy(svm_classifier.predict(bow_dataset_test)
 
 one_vs_rest_SVM = OneVRestSVM()
 one_vs_rest_SVM.fit(bow_dataset_train, labels_train)
+preds = one_vs_rest_SVM.predict(bow_dataset_test)
+print_confusion_matrix(build_confusion_matrix(preds, labels_test))
 print("ACCURACY with one vs rest SVM", get_accuracy(one_vs_rest_SVM.predict(bow_dataset_test), labels_test))
 
 

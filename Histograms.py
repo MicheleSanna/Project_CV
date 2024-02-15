@@ -35,7 +35,7 @@ def best_cluster_number(sift_descriptors):
         centroids = kmeans.cluster_centers_
         print("N_clusters: {i} |  Silhouette: {avg}".format(i=i, avg=silhouette_avg(sift_descriptors, centroids)))
 
-def centroid_vote1(centroids, descriptors, distance_fun):
+def centroid_vote(centroids, descriptors, distance_fun):
     vote = 1000 #will give out of bound error if not updated
     vote_histogram = np.zeros(len(centroids))
     for descriptor in descriptors:
@@ -47,3 +47,28 @@ def centroid_vote1(centroids, descriptors, distance_fun):
                 vote = i
         vote_histogram[vote] +=1
     return l2_normalization(vote_histogram)
+
+def centroid_soft_vote(centroids, descriptors, distance_fun):
+    vote_histogram = np.zeros(len(centroids))
+    for descriptor in descriptors:
+        for i in range(len(centroids)):
+            dist = distance_fun(centroids[i], descriptor)
+            vote_histogram[i] += 1/dist
+
+    return l2_normalization(vote_histogram)
+
+def centroid_soft_vote2(centroids, descriptors, distance_fun):
+    vote_histogram = np.zeros(len(centroids))
+    for descriptor in descriptors:
+        for i in range(len(centroids)):
+            dist = distance_fun(centroids[i], descriptor)
+            vote_histogram[i] += dist
+    
+    for i in range(len(vote_histogram)):
+        vote_histogram[i] = 1/vote_histogram[i]
+
+    return l2_normalization(vote_histogram)
+
+
+def l2_distance(a, b):
+    return np.linalg.norm(a - b)
