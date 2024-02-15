@@ -9,7 +9,7 @@ def get_accuracy(preds, labels):
     return accuracy/len(preds)
 
 def build_confusion_matrix(preds, labels):
-    confusion_matrix = np.zeros(15,15)
+    confusion_matrix = np.zeros((15,15))
     for pred, label in zip(preds, labels):
         confusion_matrix[label, pred] += 1
     return confusion_matrix
