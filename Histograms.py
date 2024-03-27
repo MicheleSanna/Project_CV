@@ -62,11 +62,10 @@ def centroid_soft_vote2(centroids, descriptors, distance_fun):
     for descriptor in descriptors:
         for i in range(len(centroids)):
             dist = distance_fun(centroids[i], descriptor)
-            vote_histogram[i] += dist
+            vote_histogram[i] += np.exp(-dist/len(centroids))
     
-    for i in range(len(vote_histogram)):
-        vote_histogram[i] = 1/vote_histogram[i]
-
+    #for i in range(len(vote_histogram)):
+    #    vote_histogram[i] = 1/vote_histogram[i]
     return l2_normalization(vote_histogram)
 
 

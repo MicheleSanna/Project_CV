@@ -1,4 +1,4 @@
-from Classifiers import *
+from classifiers import *
 
 
 def get_accuracy(preds, labels):

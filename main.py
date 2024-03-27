@@ -1,81 +1,92 @@
-from Evaluate import *
+from classifiers import * 
 from Dataset import *
 from Histograms import *
 from EMD import * 
+from test import *
 from scipy.stats import wasserstein_distance
+import matplotlib.pyplot as plt
+from sklearn.gaussian_process.kernels import RBF
+from sklearn.multiclass import OneVsRestClassifier
+from sklearn.metrics import ConfusionMatrixDisplay
+from sklearn.neighbors import KNeighborsClassifier
 
-def min_dist(centroids, descriptors):
-    min_dist = 100000
-    for centroid in centroids:
-        for descriptor in descriptors:
-            dist = np.linalg.norm(centroid - descriptor)
-            if dist < min_dist:
-                min_dist = dist
-    return min_dist
+LOAD = True
+KNN = True
+TEST = False
+CV = False
+n_clusters = 50
+metrics = {"1nn": [], "SVM": []}
+plt.rcParams['font.size'] = 7
 
-def print_list(l):
-    for element in l:
-        print(element)
-
-def pseudomedian(descriptor):
-    min_diff = 100
-    center = 0
-    for i in range(len(descriptor)):
-        diff = abs(sum(descriptor[0:i-1]) - sum(descriptor[i:len(descriptor)-1]))
-        if diff < min_diff:
-            mind_diff = diff
-            center = i
-    return center
-
-
-
-
-
-
-
-
-print("Passo 1")
-dataset = Dataset("dataset\\", "train")
-
-sift_descriptors = create_descriptor_dataset(dataset)
-#best_cluster_number(sift_descriptors) #Not useful
-
-n_clusters = 30
-print("--------------------")
+print("START")
 print("N CLUSTERS: ", n_clusters)
-kmeans = KMeans(n_clusters = n_clusters, n_init='auto')
-kmeans.fit(sift_descriptors)
-centroids = kmeans.cluster_centers_
 
-bow_dataset_train, labels_train = create_bag_of_words_dataset(dataset, centroids, l2_distance)
-print(bow_dataset_train)
+if LOAD:
+    centroids = np.load("centroids_50.npy")
+else:
+    dataset = Dataset("dataset\\", "train")
+    sift_descriptors = create_descriptor_dataset(dataset)
+    kmeans = KMeans(n_clusters = n_clusters, n_init='auto')
+    kmeans.fit(sift_descriptors)
+    centroids = kmeans.cluster_centers_
+    np.save("centroids_50", centroids)
+
+
+if LOAD:
+    bow_dataset_train = np.load("bow_dataset_train_50.npy")
+    labels_train = np.load("labels_train_50.npy")
+else:
+    bow_dataset_train, labels_train = create_bag_of_words_dataset(dataset, centroids, l2_distance)
+    np.save("bow_dataset_train_50", bow_dataset_train)
+    np.save("labels_train_50", labels_train)
+
 print("Bag of words train dataset: DONE")
-print("Length: ", len(bow_dataset_train))
 
-dataset_test = Dataset("dataset\\", "test")
-
-bow_dataset_test, labels_test = create_bag_of_words_dataset(dataset_test, centroids, l2_distance)
+if LOAD:
+    bow_dataset_test = np.load("bow_dataset_test_50.npy")
+    labels_test = np.load("labels_test_50.npy")
+else:
+    dataset_test = Dataset("dataset\\", "test")
+    bow_dataset_test, labels_test = create_bag_of_words_dataset(dataset_test, centroids, l2_distance)
+    np.save("bow_dataset_test_50", bow_dataset_test)
+    np.save("labels_test_50", labels_test)
 
 print("Bag of words test dataset: DONE")
 
-onenn_classifier = NearestNeighbourClassifier(l2_distance)
-onenn_classifier.fit(bow_dataset_train, labels_train)
+if KNN:
+    knn_classifier = KNeighborsClassifier(n_neighbors=5, weights='distance', n_jobs = 4)
+    onenn_classifier = NearestNeighbourClassifier(l2_distance)
 
-preds = onenn_classifier.predict(bow_dataset_test)
-print_confusion_matrix(build_confusion_matrix(preds, labels_test))
-print("ACCURACY with 1nn", get_accuracy(onenn_classifier.predict(bow_dataset_test), labels_test))
+    onenn_classifier.fit(bow_dataset_train, labels_train)
+    preds = onenn_classifier.predict(bow_dataset_test)
+    #print_confusion_matrix(build_confusion_matrix(preds, labels_test))
+    print("ACCURACY with 1nn: ", get_accuracy(onenn_classifier.predict(bow_dataset_test), labels_test))
+    metrics["1nn"].append(get_accuracy(onenn_classifier.predict(bow_dataset_test), labels_test))
+    disp = ConfusionMatrixDisplay.from_predictions(labels_test, preds, normalize='true', display_labels=['Bedroom', 'Coast', 'Forest','Highway','Industrial','InsideCity','Kitchen','LivingRoom','Mountain','Office','OpenCountry','Store','Street','Suburb','TallBuilding'])
+    disp.plot()
+    plt.show()
 
-svm_classifier = svm.SVC(decision_function_shape='ovr') #This is not the implementation of One vs Rest SVM, it's just for testing
-svm_classifier.fit(bow_dataset_train, labels_train)
+#rbf = RBF()
+emd = EMDCalculator(centroids, n_clusters)
+print("emd result:", emd.kernel(np.array([bow_dataset_train[0], bow_dataset_train[1], bow_dataset_train[2], bow_dataset_train[3]]), np.array([bow_dataset_train[0], bow_dataset_train[1], bow_dataset_train[2], bow_dataset_train[3]])))
+#print("chi result:", emd.kernel2(np.array([bow_dataset_train[0], bow_dataset_train[1], bow_dataset_train[2], bow_dataset_train[3]]).astype("float32"), np.array([bow_dataset_train[0], bow_dataset_train[1], bow_dataset_train[2], bow_dataset_train[3]]).astype("float32")))
+gamma = 2.8 
+one_vs_rest_SVM = OneVsRestClassifier(svm.SVC(kernel='linear', probability=True), n_jobs=4) #For fast computation
 
-print("ACCURACY with SVM", get_accuracy(svm_classifier.predict(bow_dataset_test), labels_test))
 
+if TEST:
+    one_vs_rest_SVM.fit(bow_dataset_train, labels_train)
+    preds = one_vs_rest_SVM.predict(bow_dataset_test)
+    print(f"ACCURACY with one vs rest SVM and gamma {gamma}:", get_accuracy(preds, labels_test))
+    metrics["SVM"].append(get_accuracy(preds, labels_test))
+    print(labels_test)
+    disp = ConfusionMatrixDisplay.from_predictions(labels_test, preds, normalize='true', display_labels=['Bedroom', 'Coast', 'Forest','Highway','Industrial','InsideCity','Kitchen','LivingRoom','Mountain','Office','OpenCountry','Store','Street','Suburb','TallBuilding'])
+    disp.plot()
+    plt.show()
 
-one_vs_rest_SVM = OneVRestSVM()
-one_vs_rest_SVM.fit(bow_dataset_train, labels_train)
-preds = one_vs_rest_SVM.predict(bow_dataset_test)
-print_confusion_matrix(build_confusion_matrix(preds, labels_test))
-print("ACCURACY with one vs rest SVM", get_accuracy(one_vs_rest_SVM.predict(bow_dataset_test), labels_test))
+if CV:
+    validate_model(one_vs_rest_SVM, bow_dataset_train, labels_train, 10)
+    
 
 
 

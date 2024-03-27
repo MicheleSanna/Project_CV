@@ -54,31 +54,29 @@ def class_pop(dataset):
     return class_pop
 
 def create_descriptor_dataset(dataset):
-    keypoints = []
     descriptors = []
 
     for i in range(len(dataset)):
         sift = cv2.SIFT_create(50)
         if(i%250 == 0 and DEBUG):
             print("Step ", i)
-        img, class_id = dataset[i]
-        kp, dscrptrs = sift.detectAndCompute(img, None)
-        for keypoint, descriptor in zip(kp, dscrptrs):
-            keypoints.append(keypoint)
+        img, _ = dataset[i]
+        _ , dscrptrs = sift.detectAndCompute(img, None)
+        for descriptor in dscrptrs:
             descriptors.append(descriptor)
 
     return np.array(descriptors)
 
 def create_bag_of_words_dataset(dataset, centroids, distance):
-    bag_of_words_dataset = []
-    labels = []
+    bag_of_words_dataset = np.zeros((len(dataset), len(centroids)))
+    labels = np.zeros((len(dataset)))
     for i in range(len(dataset)):
         img, class_id = dataset[i]
-        bag_of_words_dataset.append(img_to_histogram(img, centroids, distance))
-        labels.append(class_id)
+        bag_of_words_dataset[i] = img_to_histogram(img, centroids, distance)
+        labels[i] = class_id
     return np.array(bag_of_words_dataset), np.array(labels) 
 
 def img_to_histogram(img, centroids, distance):
     sift = cv2.SIFT_create(1000)
-    kp, dscrptrs = sift.detectAndCompute(img, None)
-    return centroid_soft_vote(centroids, dscrptrs, distance)
+    _ , dscrptrs = sift.detectAndCompute(img, None)
+    return centroid_soft_vote2(centroids, dscrptrs, distance)
