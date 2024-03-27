@@ -15,7 +15,6 @@ KNN = True
 TEST = False
 CV = False
 n_clusters = 50
-metrics = {"1nn": [], "SVM": []}
 plt.rcParams['font.size'] = 7
 
 print("START")
@@ -59,26 +58,18 @@ if KNN:
 
     onenn_classifier.fit(bow_dataset_train, labels_train)
     preds = onenn_classifier.predict(bow_dataset_test)
-    #print_confusion_matrix(build_confusion_matrix(preds, labels_test))
     print("ACCURACY with 1nn: ", get_accuracy(onenn_classifier.predict(bow_dataset_test), labels_test))
-    metrics["1nn"].append(get_accuracy(onenn_classifier.predict(bow_dataset_test), labels_test))
     disp = ConfusionMatrixDisplay.from_predictions(labels_test, preds, normalize='true', display_labels=['Bedroom', 'Coast', 'Forest','Highway','Industrial','InsideCity','Kitchen','LivingRoom','Mountain','Office','OpenCountry','Store','Street','Suburb','TallBuilding'])
     disp.plot()
     plt.show()
 
-#rbf = RBF()
-emd = EMDCalculator(centroids, n_clusters)
-print("emd result:", emd.kernel(np.array([bow_dataset_train[0], bow_dataset_train[1], bow_dataset_train[2], bow_dataset_train[3]]), np.array([bow_dataset_train[0], bow_dataset_train[1], bow_dataset_train[2], bow_dataset_train[3]])))
-#print("chi result:", emd.kernel2(np.array([bow_dataset_train[0], bow_dataset_train[1], bow_dataset_train[2], bow_dataset_train[3]]).astype("float32"), np.array([bow_dataset_train[0], bow_dataset_train[1], bow_dataset_train[2], bow_dataset_train[3]]).astype("float32")))
-gamma = 2.8 
-one_vs_rest_SVM = OneVsRestClassifier(svm.SVC(kernel='linear', probability=True), n_jobs=4) #For fast computation
+one_vs_rest_SVM = OneVsRestClassifier(svm.SVC(kernel=gaussian_chi_kernel_fast, probability=True), n_jobs=4) #For fast computation
 
 
 if TEST:
     one_vs_rest_SVM.fit(bow_dataset_train, labels_train)
     preds = one_vs_rest_SVM.predict(bow_dataset_test)
-    print(f"ACCURACY with one vs rest SVM and gamma {gamma}:", get_accuracy(preds, labels_test))
-    metrics["SVM"].append(get_accuracy(preds, labels_test))
+    print(f"ACCURACY with one vs rest SVM and gamma {2.8}:", get_accuracy(preds, labels_test))
     print(labels_test)
     disp = ConfusionMatrixDisplay.from_predictions(labels_test, preds, normalize='true', display_labels=['Bedroom', 'Coast', 'Forest','Highway','Industrial','InsideCity','Kitchen','LivingRoom','Mountain','Office','OpenCountry','Store','Street','Suburb','TallBuilding'])
     disp.plot()
@@ -87,13 +78,3 @@ if TEST:
 if CV:
     validate_model(one_vs_rest_SVM, bow_dataset_train, labels_train, 10)
     
-
-
-
-
-#for datapoint in dataset_test:
-#    img, real_class = datapoint
-#    predicted_class = svm_classifier.predict(img_to_histogram(img, centroids))
-#    print(real_class, predicted_class)
-#    if real_class == predicted_class:
-#        accuracy += 1
