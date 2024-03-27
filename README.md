@@ -3,6 +3,7 @@ If you are running this script fot the first time, you have to set the variable 
 The other flags are useful if you, for example, want to execute only Knn and not SVM or the other way around, or if you want to choose between test and cross validation.
 
 **Scripts**
+
 "main.py" launches the script.
 
 "Dataset.py" contains class and methods to create your bag of word dataset.
